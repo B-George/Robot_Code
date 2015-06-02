@@ -10,9 +10,11 @@
 #include <ostream>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
 
 #define LM 26		// Right motor test control ---------------- pin 32
 #define RM 23		// Left motor test control ----------------- pin 33
@@ -30,6 +32,7 @@
 #define LED_PIN 15	// LED tester ------------------------------ pin 08
 
 #define SPEED 1000	// speed for our PWM
+#define SLOWSPEED 700 // slower speed for PWM
 #define STOP 0		// speed == 0
 
 #define REP(a, b)	for(int i = a; i < b; i++) // define for loop -- remove ;
@@ -42,15 +45,18 @@
 using namespace std;
 
 // motor movement functions
-void turn_left();
-void turn_right();
-void spin_left();
-void spin_right();
-void move_fwd();
-void move_bwd();
+void turn_left(int speed);
+void turn_right(int speed);
+void spin_left(int speed);
+void spin_right(int speed);
+void move_fwd(int speed);
+void move_bwd(int speed);
 void full_stop();
 void move_fwd_direct();
 void stop_direct();
+
+// get distance from front of bot in CM
+int getCM();
 
 // sets all pins as defined above
 void setPins();
@@ -76,8 +82,15 @@ int phase = ORIENT;
 int main()
 {
 
-pid_t parent pid, child_pid;
+full_stop();
+
+// wait for run switch to be activated
+while(!RUN_SW){}
+
+pid_t parent_pid, child_pid;
 parent_pid = getpid();
+cout << "parent_pid = " << parent_pid << endl;
+int distance = 0;
 
 child_pid = fork();
 if(child_pid == 0) { // child pid -- go to transmit fxn
@@ -85,11 +98,62 @@ if(child_pid == 0) { // child pid -- go to transmit fxn
 	printf("Imma child, going to IRtrn");
 	IRtrn();
 }else{ // parent_pid
-	while(1){
-		switch phase
-			case: ORIENT
-				
+	while(SD_SW){ // run while shutdown switch is closed
+		if(phase == ORIENT) {	// Face away from walls -- top level if
 
+			while(distance < 100) {
+				distance = getCM();
+				if(distance < 25){
+					move_bwd(SPEED);
+				}else{
+					turn_right(SPEED);
+				}
+			}
+			full_stop();
+			// if facing away from walls
+			phase = MOVING;
+
+		} else if(phase == MOVING) { // top level if
+
+			// moving down hall, look for zombies
+			move_fwd(SPEED);
+			// if we see something, check if it's a zombie
+			if(getCM() <= 75){
+				full_stop();
+				turn_left(SPEED);
+				delay(100);
+				full_stop();
+				if(getCM() <= 75){ // must be a wall
+					turn_right(SPEED);
+					delay(200);
+					full_stop();
+				}else{			// probably was a zombie
+					turn_right(SPEED);
+					delay(100);
+					full_stop();
+				}
+			}
+			// if US finds Zombie 
+			phase = ZFOUND;
+
+		} else if(phase == ZFOUND) {// top level if
+
+				// aproach zombie, stop at 75 cm
+				
+				// if dist == 60 cm phase = ZKILL
+
+		} else if(phase == ZKILL) { // top level if
+
+				// message transmitter start
+				// for 5 sec 
+					// maintain 60 cm dist
+					// if ipc r2n = my char
+					// audio cheer
+				// attempt audio lure
+				// phase = ZFOUND
+				
+		} // end if (phase)
+	} // end while(1)
 // US sensor test code
 /*
 	int num;
@@ -160,8 +224,8 @@ if(child_pid == 0) { // child pid -- go to transmit fxn
 	std::cout << "wait .5 sec\n";
 	delay(500);
 */
-
-
+	}
+	system("sudo shutdown -h now");
 	return 0;	
  
 }
@@ -184,53 +248,52 @@ void setPins()
 		pinMode(US_ECHO_1, INPUT);
 		pinMode(US_ECHO_2, INPUT);
 		pinMode(IR_REC, INPUT);
-		
-		pullUpDncontrol(2, PUD_UP);
+		digitalWrite(US_TRIG, LOW); // trig pin must start low
 	std::cout << "pins set\n\n";
 }
 
-void turn_left()
+void turn_left(int speed)
 {
-	pwmWrite(L_PWM, SPEED);
+	pwmWrite(L_PWM, speed);
 	pwmWrite(R_PWM, STOP);
 	digitalWrite(L_REV, LOW); 
 }
 
-void turn_right()
+void turn_right(int speed)
 {
 	pwmWrite(L_PWM, STOP);
-	pwmWrite(R_PWM, SPEED);
+	pwmWrite(R_PWM, speed);
 	digitalWrite(R_REV, LOW); 
 }
 
-void spin_left()
+void spin_left(int speed)
 {
-	pwmWrite(L_PWM, SPEED);
-	pwmWrite(R_PWM, SPEED);
+	pwmWrite(L_PWM, speed);
+	pwmWrite(R_PWM, speed);
 	digitalWrite(L_REV, LOW);
 	digitalWrite(R_REV, LOW);
 }
 
-void spin_right()
+void spin_right(int speed)
 {
-	pwmWrite(L_PWM, SPEED);
-	pwmWrite(R_PWM, SPEED);
+	pwmWrite(L_PWM, speed);
+	pwmWrite(R_PWM, speed);
 	digitalWrite(L_REV, HIGH);
 	digitalWrite(R_REV, LOW);
 }
 
-void move_fwd()
+void move_fwd(int speed)
 {
-	pwmWrite(L_PWM, SPEED);
-	pwmWrite(R_PWM, SPEED);
+	pwmWrite(L_PWM, speed);
+	pwmWrite(R_PWM, speed);
 	digitalWrite(L_REV, LOW);
 	digitalWrite(R_REV, LOW);
 }
 
-void move_bwd()
+void move_bwd(int speed)
 {
-	pwmWrite(L_PWM, SPEED);
-	pwmWrite(R_PWM, SPEED);
+	pwmWrite(L_PWM, speed);
+	pwmWrite(R_PWM, speed);
 	digitalWrite(L_REV, HIGH);
 	digitalWrite(R_REV, HIGH);
 }
@@ -257,6 +320,27 @@ void stop_direct()
 	digitalWrite(R_REV, LOW);
 }
 
+int getCM() // with thanks to https://ninedof.wordpress.com
+{
+	// send pulse
+	digitalWrite(US_TRIG, HIGH);
+	delayMicroseconds(20);
+	digitalWrite(US_TRIG, LOW);
+	
+	// wait for echo to start
+	while(digitalRead(US_ECHO_1) == LOW);
+	
+	// wait for echo end
+	long startTime = micros();
+	while(digitalRead(US_ECHO_1) == HIGH);
+	long travelTime = micros() - startTime;
+	
+	// get distance in cm
+	int dist = travelTime / 58;
+	
+	return dist;
+	
+}
 
 void pulse_start_ISR(void)
 {
@@ -280,7 +364,7 @@ void IRrec()
 	pid_t parent_pid, child_pid;
 	parent_pid = getpid();
 	if(pipe(pfds) == -1) { // call pipe and center in pfds
-		perror("pipi") // call failed
+		perror("pipi"); // call failed
 		exit(1);
 	}
 	if (fcntl(pfds[0], F_SETFL, O_NONBLOCK) == -1){
@@ -290,10 +374,41 @@ void IRrec()
 		srand(543216345);
 		
 		child_pid = fork();
-		if(child_pid = 0) {
+		if(child_pid == 0) {
 			child_pid = getpid();
-			printf("I am child -- forking to IRtrn\n\n"
+			printf("I am child -- forking to IRtrn\n\n");
 			IRtrn();
+		}else{
+			// parent receives
+			printf("I am the parent with pid %d\n\n", parent_pid);
+			if(close(pfds[0]) == -1) { // relinquish ownership of child end of pipe
+				printf("PARENT: Couldn't close the child end of the pipe.\n\n");
+				fflush(stdout);
+				exit(1);
+			}
+			while(1){
+				while(digitalRead(IR_REC == LOW)){
+					delay(1); // wait for IR signal
+				}
+				delay(2); // 2-3 ms into a start
+				if(digitalRead(IR_REC)){ // found 3 1's in a row(start bit)
+					parityr = 0;
+					for(i = 0; i < 8; i++){
+						delay(5); // wait for next bit
+						bit = digitalRead(IR_REC);
+						parityr = parityr + bit;
+						letter = ((letter << 1) | (bit & 0x01));
+					}
+					if ((parityr & 0x01) == digitalRead(IR_REC)) {
+						printf("PARENT: Character received is %c.\n\n", letter);
+						if (letter == '?')
+							write(pfds[1], "?", 2);
+					}else{
+						printf("PARENT: Parity error encountered.\n\n");
+					}
+				}
+			else break;
+			} // end of while(1);
 		}
 }
 
@@ -318,10 +433,10 @@ void IRtrn()
 				break;
 			default:
 				if(buf[0] == '?'){
-					twiddle = ((rand()%10) + 1) * 600); // vary the rate of the next transmission
+					twiddle = (((rand()%10) + 1) * 600); // vary the rate of the next transmission
 					buf[0] = 0;
 					fflush(stdout);
-				}else{
+			}else{
 					twiddle = 2000;
 					printf("CHILD: Read returned %i\n", report);
 					fflush(stdout);
@@ -338,7 +453,7 @@ void IRtrn()
 				for (i = 0; i < 8; i++) {
 					bit = ('?' >> (7-i)) & 0x01;
 					digitalWrite(IR_SEND, bit);
-					parityt = parityt + bit);
+					parityt = (parityt + bit);
 					delay(5);
 				}
 		}else{
@@ -357,3 +472,4 @@ void IRtrn()
 			exit(0);
 	}// end of while
 }
+
