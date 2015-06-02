@@ -30,6 +30,7 @@
 #define LED_PIN 15	// LED tester ------------------------------ pin 08
 
 #define SPEED 1000	// speed for our PWM
+#define SLOWSPEED 700 // slower speed for PWM
 #define STOP 0		// speed == 0
 
 #define REP(a, b)	for(int i = a; i < b; i++) // define for loop -- remove ;
@@ -42,12 +43,12 @@
 using namespace std;
 
 // motor movement functions
-void turn_left();
-void turn_right();
-void spin_left();
-void spin_right();
-void move_fwd();
-void move_bwd();
+void turn_left(int speed);
+void turn_right(int speed);
+void spin_left(int speed);
+void spin_right(int speed);
+void move_fwd(int speed);
+void move_bwd(int speed);
 void full_stop();
 void move_fwd_direct();
 void stop_direct();
@@ -102,9 +103,9 @@ if(child_pid == 0) { // child pid -- go to transmit fxn
 				while(distance < 100) {
 					distance = getCM();
 					if(distance < 25){
-						move_bwd();
+						move_bwd(SPEED);
 					}else{
-						turn_right();
+						turn_right(SPEED);
 					}
 				}
 				full_stop();
@@ -114,20 +115,20 @@ if(child_pid == 0) { // child pid -- go to transmit fxn
 				
 			case: MOVING
 				// moving down hall, look for zombies
-				move_fwd();
+				move_fwd(SPEED);
 				
 				// if we see something, check if it's a zombie
 				if(getCM() <= 75){
 					full_stop();
-					turn_left();
+					turn_left(SPEED);
 					delay(100);
 					full_stop();
 					if(getCM <= 75){ // must be a wall
-						turn_right()
+						turn_right(SPEED)
 						delay(200);
 						full_stop();
 					}else{			// probably was a zombie
-						turn_right();
+						turn_right(SPEED);
 						delay(100);
 						full_stop();
 				}
@@ -136,6 +137,7 @@ if(child_pid == 0) { // child pid -- go to transmit fxn
 				// phase = ZFOUND
 			case: ZFOUND
 				// aproach zombie, stop at 75 cm
+				
 				// if dist == 60 cm phase = ZKILL
 			case: ZKILL
 				// message transmitter start
@@ -243,52 +245,51 @@ void setPins()
 		pinMode(US_ECHO_2, INPUT);
 		pinMode(IR_REC, INPUT);
 		digitalWrite(US_TRIG, LOW); // trig pin must start low
-	//	pullUpDncontrol(2, PUD_UP);
 	std::cout << "pins set\n\n";
 }
 
-void turn_left()
+void turn_left(int speed)
 {
-	pwmWrite(L_PWM, SPEED);
+	pwmWrite(L_PWM, speed);
 	pwmWrite(R_PWM, STOP);
 	digitalWrite(L_REV, LOW); 
 }
 
-void turn_right()
+void turn_right(int speed)
 {
 	pwmWrite(L_PWM, STOP);
-	pwmWrite(R_PWM, SPEED);
+	pwmWrite(R_PWM, speed);
 	digitalWrite(R_REV, LOW); 
 }
 
-void spin_left()
+void spin_left(int speed)
 {
-	pwmWrite(L_PWM, SPEED);
-	pwmWrite(R_PWM, SPEED);
+	pwmWrite(L_PWM, speed);
+	pwmWrite(R_PWM, speed);
 	digitalWrite(L_REV, LOW);
 	digitalWrite(R_REV, LOW);
 }
 
-void spin_right()
+void spin_right(int speed)
 {
-	pwmWrite(L_PWM, SPEED);
-	pwmWrite(R_PWM, SPEED);
+	pwmWrite(L_PWM, speed);
+	pwmWrite(R_PWM, speed);
 	digitalWrite(L_REV, HIGH);
 	digitalWrite(R_REV, LOW);
 }
 
-void move_fwd()
+void move_fwd(int speed)
 {
-	pwmWrite(L_PWM, SPEED);
-	pwmWrite(R_PWM, SPEED);
+	pwmWrite(L_PWM, speed);
+	pwmWrite(R_PWM, speed);
 	digitalWrite(L_REV, LOW);
 	digitalWrite(R_REV, LOW);
 }
 
-void move_bwd()
+void move_bwd(int speed)
 {
-	pwmWrite(L_PWM, SPEED);
-	pwmWrite(R_PWM, SPEED);
+	pwmWrite(L_PWM, speed);
+	pwmWrite(R_PWM, speed);
 	digitalWrite(L_REV, HIGH);
 	digitalWrite(R_REV, HIGH);
 }
