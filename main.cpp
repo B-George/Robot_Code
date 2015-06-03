@@ -81,31 +81,38 @@ int phase = ORIENT;
 
 int main()
 {
-
+setPins();
 full_stop();
 
 // wait for run switch to be activated
-while(!RUN_SW){}
+//while(!RUN_SW){}
 
-pid_t parent_pid, child_pid;
+/*pid_t parent_pid, child_pid;
 parent_pid = getpid();
 cout << "parent_pid = " << parent_pid << endl;
-int distance = 0;
+child_pid = getpid();
+cout << "child_pid = " << child_pid << endl;
 
-child_pid = fork();
-if(child_pid == 0) { // child pid -- go to transmit fxn
-	child_pid = getpid();
-	printf("Imma child, going to IRtrn");
-	IRtrn();
-}else{ // parent_pid
-	while(SD_SW){ // run while shutdown switch is closed
+int distance = 0;
+cout << "distance = " << distance << endl;
+//child_pid = fork();
+//if(child_pid == 0) { // child pid -- go to transmit fxn
+//	child_pid = getpid();
+//	printf("Imma child, going to IRtrn");
+//	IRtrn();
+//}else{ // parent_pid
+	while(1){ // run while shutdown switch is closed
 		if(phase == ORIENT) {	// Face away from walls -- top level if
+			cout << "phase = ORIENT\n\n";
 
 			while(distance < 100) {
+				cout << "getting distance\n\n";
 				distance = getCM();
 				if(distance < 25){
+					cout << "distance < 25cm, move backward\n\n";
 					move_bwd(SPEED);
 				}else{
+					cout << "distance > 25cm, turn right\n\n";
 					turn_right(SPEED);
 				}
 			}
@@ -114,11 +121,12 @@ if(child_pid == 0) { // child pid -- go to transmit fxn
 			phase = MOVING;
 
 		} else if(phase == MOVING) { // top level if
-
+			cout << "phase = MOVING, moving forward.\n\n";
 			// moving down hall, look for zombies
 			move_fwd(SPEED);
 			// if we see something, check if it's a zombie
 			if(getCM() <= 75){
+				cout << "distance <= 75cm, object detected\n\n";
 				full_stop();
 				turn_left(SPEED);
 				delay(100);
@@ -137,13 +145,13 @@ if(child_pid == 0) { // child pid -- go to transmit fxn
 			phase = ZFOUND;
 
 		} else if(phase == ZFOUND) {// top level if
-
+			cout << "phase = ZFOUND\n\n";
 				// aproach zombie, stop at 75 cm
 				
 				// if dist == 60 cm phase = ZKILL
 
 		} else if(phase == ZKILL) { // top level if
-
+			cout << "phase = ZKILL\n\n";
 				// message transmitter start
 				// for 5 sec 
 					// maintain 60 cm dist
@@ -154,28 +162,37 @@ if(child_pid == 0) { // child pid -- go to transmit fxn
 				
 		} // end if (phase)
 	} // end while(1)
+*/
 // US sensor test code
-/*
+
 	int num;
 	FILE *fp;
 
 	wiringPiSetup();
-	setPins();
+//	setPins();
+	cout << "setting up interrupts\n\n";
 	wiringPiISR( US_ECHO_1, INT_EDGE_RISING, &pulse_start_ISR );
 	wiringPiISR( US_ECHO_2, INT_EDGE_FALLING, &pulse_end_ISR );
 
 	full_stop();
-	delay(60000);
+	delay(15000);
 
-	spin_left();
+	spin_left(SPEED);
 
-	REP(0,512)
+	
+	cout << "getting measurements\n\n";
+	for(i = 0; i < 512; i++)
 	{
-		delay(100);
+		cout << "iteration #" << i << endl;
+		delay(250);
+		cout << "trigger high\n";
 		digitalWrite(US_TRIG, HIGH);
-		delay(1);
+		delay(50);
+		cout << "trigger low\n";
 		digitalWrite(US_TRIG, LOW);	
+		pulse_end_ISR();
 	}
+
 	delay(100);
 	full_stop();
 
@@ -189,7 +206,7 @@ if(child_pid == 0) { // child pid -- go to transmit fxn
 	} 
 
 	cout << "program complete";
-*/
+
 	
 
 // test code for finding H(s)
@@ -224,31 +241,31 @@ if(child_pid == 0) { // child pid -- go to transmit fxn
 	std::cout << "wait .5 sec\n";
 	delay(500);
 */
-	}
-	system("sudo shutdown -h now");
+//	}
+//	system("sudo shutdown -h now");
 	return 0;	
  
 }
 
 void setPins()
 {
-		// outputs
-		pinMode(L_PWM, PWM_OUTPUT);
-		pinMode(R_PWM, PWM_OUTPUT);
-		//pinMode(RM, OUTPUT);
-		//pinMode(LM, OUTPUT);
-		pinMode(L_REV, OUTPUT);
-		pinMode(R_REV, OUTPUT);
-		pinMode(IR_SEND, OUTPUT);
-		pinMode(US_TRIG, OUTPUT);
-		pinMode(LED_PIN, OUTPUT);
-		// inputs
-		pinMode(RUN_SW, INPUT);
-		pinMode(SD_SW, INPUT);
-		pinMode(US_ECHO_1, INPUT);
-		pinMode(US_ECHO_2, INPUT);
-		pinMode(IR_REC, INPUT);
-		digitalWrite(US_TRIG, LOW); // trig pin must start low
+	// outputs
+	pinMode(L_PWM, PWM_OUTPUT);
+	pinMode(R_PWM, PWM_OUTPUT);
+	//pinMode(RM, OUTPUT);
+	//pinMode(LM, OUTPUT);
+	pinMode(L_REV, OUTPUT);
+	pinMode(R_REV, OUTPUT);
+	pinMode(IR_SEND, OUTPUT);
+	pinMode(US_TRIG, OUTPUT);
+	pinMode(LED_PIN, OUTPUT);
+	// inputs
+	pinMode(RUN_SW, INPUT);
+	pinMode(SD_SW, INPUT);
+	pinMode(US_ECHO_1, INPUT);
+	pinMode(US_ECHO_2, INPUT);
+	pinMode(IR_REC, INPUT);
+	digitalWrite(US_TRIG, LOW); // trig pin must start low
 	std::cout << "pins set\n\n";
 }
 
@@ -323,23 +340,27 @@ void stop_direct()
 int getCM() // with thanks to https://ninedof.wordpress.com
 {
 	// send pulse
+	cout << "getting distance\n\n";
 	digitalWrite(US_TRIG, HIGH);
 	delayMicroseconds(20);
 	digitalWrite(US_TRIG, LOW);
-	
+
 	// wait for echo to start
+	cout << "waiting for echo to start\n\n";
 	while(digitalRead(US_ECHO_1) == LOW);
-	
+
 	// wait for echo end
+	cout << "waiting for echo to end\n\n";
 	long startTime = micros();
 	while(digitalRead(US_ECHO_1) == HIGH);
 	long travelTime = micros() - startTime;
-	
+
 	// get distance in cm
+	cout << "converting to centimeters\n\n";
 	int dist = travelTime / 58;
-	
+	cout << "distance = " << dist << endl;
 	return dist;
-	
+
 }
 
 void pulse_start_ISR(void)
@@ -355,6 +376,7 @@ void pulse_end_ISR(void)
 	gettimeofday(&end, NULL);
 	t_start = start.tv_sec + (start.tv_usec/1000000.0);
 	t_end =  end.tv_sec + (end.tv_usec/1000000.0);
+	cout << "interval = " << t_end - t_start << endl;
 	intervals[i] = t_end - t_start;
 	return;
 }
