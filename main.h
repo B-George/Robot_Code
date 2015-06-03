@@ -10,11 +10,9 @@
 #include <ostream>
 #include <sys/types.h>
 #include <sys/time.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
 
 #define LM 26		// Right motor test control ---------------- pin 32
 #define RM 23		// Left motor test control ----------------- pin 33
@@ -81,77 +79,67 @@ int phase = ORIENT;
 
 int main()
 {
-setPins();
+
 full_stop();
 
 // wait for run switch to be activated
-//while(!RUN_SW){}
+while(!RUN_SW){}
 
-/*pid_t parent_pid, child_pid;
+pid_t parent pid, child_pid;
 parent_pid = getpid();
-cout << "parent_pid = " << parent_pid << endl;
-child_pid = getpid();
-cout << "child_pid = " << child_pid << endl;
-
 int distance = 0;
-cout << "distance = " << distance << endl;
-//child_pid = fork();
-//if(child_pid == 0) { // child pid -- go to transmit fxn
-//	child_pid = getpid();
-//	printf("Imma child, going to IRtrn");
-//	IRtrn();
-//}else{ // parent_pid
-	while(1){ // run while shutdown switch is closed
-		if(phase == ORIENT) {	// Face away from walls -- top level if
-			cout << "phase = ORIENT\n\n";
 
-			while(distance < 100) {
-				cout << "getting distance\n\n";
-				distance = getCM();
-				if(distance < 25){
-					cout << "distance < 25cm, move backward\n\n";
-					move_bwd(SPEED);
-				}else{
-					cout << "distance > 25cm, turn right\n\n";
-					turn_right(SPEED);
+child_pid = fork();
+if(child_pid == 0) { // child pid -- go to transmit fxn
+	child_pid = getpid();
+	printf("Imma child, going to IRtrn");
+	IRtrn();
+}else{ // parent_pid
+	while(SD_SW){ // run while shutdown switch is closed
+		switch phase
+		{
+			case: ORIENT
+				// Face away from walls
+				while(distance < 100) {
+					distance = getCM();
+					if(distance < 25){
+						move_bwd(SPEED);
+					}else{
+						turn_right(SPEED);
+					}
 				}
-			}
-			full_stop();
-			// if facing away from walls
-			phase = MOVING;
-
-		} else if(phase == MOVING) { // top level if
-			cout << "phase = MOVING, moving forward.\n\n";
-			// moving down hall, look for zombies
-			move_fwd(SPEED);
-			// if we see something, check if it's a zombie
-			if(getCM() <= 75){
-				cout << "distance <= 75cm, object detected\n\n";
 				full_stop();
-				turn_left(SPEED);
-				delay(100);
-				full_stop();
-				if(getCM() <= 75){ // must be a wall
-					turn_right(SPEED);
-					delay(200);
+				// if facing away from walls
+				
+				phase = MOVING;
+				
+			case: MOVING
+				// moving down hall, look for zombies
+				move_fwd(SPEED);
+				
+				// if we see something, check if it's a zombie
+				if(getCM() <= 75){
 					full_stop();
-				}else{			// probably was a zombie
-					turn_right(SPEED);
+					turn_left(SPEED);
 					delay(100);
 					full_stop();
+					if(getCM <= 75){ // must be a wall
+						turn_right(SPEED)
+						delay(200);
+						full_stop();
+					}else{			// probably was a zombie
+						turn_right(SPEED);
+						delay(100);
+						full_stop();
 				}
-			}
-			// if US finds Zombie 
-			phase = ZFOUND;
-
-		} else if(phase == ZFOUND) {// top level if
-			cout << "phase = ZFOUND\n\n";
+				
+				// if US finds Zombie 
+				// phase = ZFOUND
+			case: ZFOUND
 				// aproach zombie, stop at 75 cm
 				
 				// if dist == 60 cm phase = ZKILL
-
-		} else if(phase == ZKILL) { // top level if
-			cout << "phase = ZKILL\n\n";
+			case: ZKILL
 				// message transmitter start
 				// for 5 sec 
 					// maintain 60 cm dist
@@ -160,39 +148,30 @@ cout << "distance = " << distance << endl;
 				// attempt audio lure
 				// phase = ZFOUND
 				
-		} // end if (phase)
+		} // end switch phase
 	} // end while(1)
-*/
 // US sensor test code
-
+/*
 	int num;
 	FILE *fp;
 
 	wiringPiSetup();
-//	setPins();
-	cout << "setting up interrupts\n\n";
+	setPins();
 	wiringPiISR( US_ECHO_1, INT_EDGE_RISING, &pulse_start_ISR );
 	wiringPiISR( US_ECHO_2, INT_EDGE_FALLING, &pulse_end_ISR );
 
 	full_stop();
-	delay(15000);
+	delay(60000);
 
-	spin_left(SPEED);
+	spin_left();
 
-	
-	cout << "getting measurements\n\n";
-	for(i = 0; i < 512; i++)
+	REP(0,512)
 	{
-		cout << "iteration #" << i << endl;
-		delay(250);
-		cout << "trigger high\n";
+		delay(100);
 		digitalWrite(US_TRIG, HIGH);
-		delay(50);
-		cout << "trigger low\n";
+		delay(1);
 		digitalWrite(US_TRIG, LOW);	
-		pulse_end_ISR();
 	}
-
 	delay(100);
 	full_stop();
 
@@ -206,7 +185,7 @@ cout << "distance = " << distance << endl;
 	} 
 
 	cout << "program complete";
-
+*/
 	
 
 // test code for finding H(s)
@@ -241,31 +220,31 @@ cout << "distance = " << distance << endl;
 	std::cout << "wait .5 sec\n";
 	delay(500);
 */
-//	}
-//	system("sudo shutdown -h now");
+
+	system("sudo shutdown -h now");
 	return 0;	
  
 }
 
 void setPins()
 {
-	// outputs
-	pinMode(L_PWM, PWM_OUTPUT);
-	pinMode(R_PWM, PWM_OUTPUT);
-	//pinMode(RM, OUTPUT);
-	//pinMode(LM, OUTPUT);
-	pinMode(L_REV, OUTPUT);
-	pinMode(R_REV, OUTPUT);
-	pinMode(IR_SEND, OUTPUT);
-	pinMode(US_TRIG, OUTPUT);
-	pinMode(LED_PIN, OUTPUT);
-	// inputs
-	pinMode(RUN_SW, INPUT);
-	pinMode(SD_SW, INPUT);
-	pinMode(US_ECHO_1, INPUT);
-	pinMode(US_ECHO_2, INPUT);
-	pinMode(IR_REC, INPUT);
-	digitalWrite(US_TRIG, LOW); // trig pin must start low
+		// outputs
+		pinMode(L_PWM, PWM_OUTPUT);
+		pinMode(R_PWM, PWM_OUTPUT);
+		//pinMode(RM, OUTPUT);
+		//pinMode(LM, OUTPUT);
+		pinMode(L_REV, OUTPUT);
+		pinMode(R_REV, OUTPUT);
+		pinMode(IR_SEND, OUTPUT);
+		pinMode(US_TRIG, OUTPUT);
+		pinMode(LED_PIN, OUTPUT);
+		// inputs
+		pinMode(RUN_SW, INPUT);
+		pinMode(SD_SW, INPUT);
+		pinMode(US_ECHO_1, INPUT);
+		pinMode(US_ECHO_2, INPUT);
+		pinMode(IR_REC, INPUT);
+		digitalWrite(US_TRIG, LOW); // trig pin must start low
 	std::cout << "pins set\n\n";
 }
 
@@ -340,27 +319,23 @@ void stop_direct()
 int getCM() // with thanks to https://ninedof.wordpress.com
 {
 	// send pulse
-	cout << "getting distance\n\n";
 	digitalWrite(US_TRIG, HIGH);
 	delayMicroseconds(20);
 	digitalWrite(US_TRIG, LOW);
-
+	
 	// wait for echo to start
-	cout << "waiting for echo to start\n\n";
 	while(digitalRead(US_ECHO_1) == LOW);
-
+	
 	// wait for echo end
-	cout << "waiting for echo to end\n\n";
 	long startTime = micros();
 	while(digitalRead(US_ECHO_1) == HIGH);
 	long travelTime = micros() - startTime;
-
+	
 	// get distance in cm
-	cout << "converting to centimeters\n\n";
-	int dist = travelTime / 58;
-	cout << "distance = " << dist << endl;
-	return dist;
-
+	int distance = travelTime / 58;
+	
+	return distance;
+	
 }
 
 void pulse_start_ISR(void)
@@ -376,7 +351,6 @@ void pulse_end_ISR(void)
 	gettimeofday(&end, NULL);
 	t_start = start.tv_sec + (start.tv_usec/1000000.0);
 	t_end =  end.tv_sec + (end.tv_usec/1000000.0);
-	cout << "interval = " << t_end - t_start << endl;
 	intervals[i] = t_end - t_start;
 	return;
 }
@@ -386,7 +360,7 @@ void IRrec()
 	pid_t parent_pid, child_pid;
 	parent_pid = getpid();
 	if(pipe(pfds) == -1) { // call pipe and center in pfds
-		perror("pipi"); // call failed
+		perror("pipi") // call failed
 		exit(1);
 	}
 	if (fcntl(pfds[0], F_SETFL, O_NONBLOCK) == -1){
@@ -396,9 +370,9 @@ void IRrec()
 		srand(543216345);
 		
 		child_pid = fork();
-		if(child_pid == 0) {
+		if(child_pid = 0) {
 			child_pid = getpid();
-			printf("I am child -- forking to IRtrn\n\n");
+			printf("I am child -- forking to IRtrn\n\n"
 			IRtrn();
 		}else{
 			// parent receives
@@ -409,9 +383,8 @@ void IRrec()
 				exit(1);
 			}
 			while(1){
-				while(digitalRead(IR_REC == LOW)){
+				while(digitalRead(IR_REC == LOW)
 					delay(1); // wait for IR signal
-				}
 				delay(2); // 2-3 ms into a start
 				if(digitalRead(IR_REC)){ // found 3 1's in a row(start bit)
 					parityr = 0;
@@ -422,7 +395,7 @@ void IRrec()
 						letter = ((letter << 1) | (bit & 0x01));
 					}
 					if ((parityr & 0x01) == digitalRead(IR_REC)) {
-						printf("PARENT: Character received is %c.\n\n", letter);
+						printf("PARENT: Character received is %c.\n\n");
 						if (letter == '?')
 							write(pfds[1], "?", 2);
 					}else{
@@ -432,6 +405,7 @@ void IRrec()
 			else break;
 			} // end of while(1);
 		}
+	return 0;
 }
 
 void IRtrn()
@@ -455,10 +429,10 @@ void IRtrn()
 				break;
 			default:
 				if(buf[0] == '?'){
-					twiddle = (((rand()%10) + 1) * 600); // vary the rate of the next transmission
+					twiddle = ((rand()%10) + 1) * 600); // vary the rate of the next transmission
 					buf[0] = 0;
 					fflush(stdout);
-			}else{
+				}else{
 					twiddle = 2000;
 					printf("CHILD: Read returned %i\n", report);
 					fflush(stdout);
@@ -475,7 +449,7 @@ void IRtrn()
 				for (i = 0; i < 8; i++) {
 					bit = ('?' >> (7-i)) & 0x01;
 					digitalWrite(IR_SEND, bit);
-					parityt = (parityt + bit);
+					parityt = parityt + bit);
 					delay(5);
 				}
 		}else{
